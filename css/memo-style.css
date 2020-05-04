@@ -1,0 +1,132 @@
+/* 预设样式 */
+.line {
+    height: 1px;
+    width: 100%;
+    background: black;
+    margin: 10px 0;
+}
+
+/* 元素样式 */
+.memo {
+    width: 250px;
+    /*min-height: 300px;*/
+    /*max-height: 500px;*/
+    background-color: #ffffff50;
+    border-radius: 15px;
+    padding: 10px;
+    /*overflow: auto;*/
+    font-family: "Microsoft YaHei", Sans-Serif;
+    transition: all .3s;
+}
+
+.memo .input-box {
+    display: grid;
+    grid-template-columns: 80% 20%;
+    grid-template-rows: 50px;
+    place-items: center;
+    background-color: #eeeeee;
+    border-radius: 10px;
+    padding: 5px 10px;
+}
+
+.memo .input-box input {
+    color: rgba(191, 54, 12, 1);
+    border: none;
+    border-bottom: 1px solid black;
+    outline: none;
+    margin: 5px 0;
+    height: 40px;
+    font-size: 14px;
+    background: none;
+}
+
+.memo .input-box button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    outline: none;
+}
+
+.memo .items {
+    min-height: 300px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.memo .items .item {
+    background-color: rgba(255, 255, 255, .8);
+    border-radius: 10px;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    color: rgba(38, 50, 56, 1);
+}
+
+.memo .items .item:hover {
+    background-color: rgba(38, 50, 56, 1);
+    color: rgba(255, 255, 255, .8);
+    transition: background-color 0.3s;
+}
+
+.memo .items .item .item-title {
+    font-size: 10px;
+}
+
+.memo .items .item .item-title .title-left {
+    float: left;
+}
+
+.memo .items .item .item-title .title-right {
+    float: right;
+    cursor: pointer;
+}
+
+.memo .items .item .item-title::after {
+    content: '';
+    display: block;
+    clear: both;
+}
+
+.memo .item .finish {
+    font-size: 12px;
+    background-color: rgba(67, 160, 71, .5);
+    border-radius: 5px;
+    padding: 0 8px;
+    transition: .2s;
+}
+
+.memo .item .item-body {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+    transition: .2s;
+}
+
+/* 双击事件的input的框的样式 */
+.input {
+    background: none;
+    border: 1px dashed rgba(183, 28, 28, 1);
+    outline: none;
+    border-radius: 0.3rem;
+    width: 100%;
+    padding: 0 0.5rem;
+    color: rgba(183, 28, 28, 1);
+}
+
+.scrollbar::-webkit-scrollbar {
+    width: 5px;
+    background: linear-gradient(to bottom, rgba(211, 47, 47, .6), rgba(40, 53, 147, .6));
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+    width: 5px;
+    border-radius: 3px;
+    background-color: #172934;
+}
+
+.memo ::-webkit-input-placeholder {
+    color: rgba(38, 50, 56, 1);
+    text-align: center;
+}
