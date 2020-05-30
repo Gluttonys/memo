@@ -1,196 +1,167 @@
-// DOM树渲染完成后就立马执行， 不必等待css, 图片资源
-document.addEventListener("DOMContentLoaded", function () {
+class Memo {
 
-    // 获取整个备忘录外边框
-    let frame = document.querySelector(".memo");
+  constructor() {
+    // 获取 dom 元素
+    this.memo = document.getElementById("memo")
+    // 初始化 memo
+    this.memo.innerHTML = `<span class="logo">勿忘</span><div class="content content_hide no-select"><div class="input">
+          <input type="text" placeholder="使用Enter嵌入" autocomplete="off"></div><div class="items scrollbar"></div></div>`
 
-    // 初始化输入框代码框
-    frame.innerHTML = `<form action="#" method="get" class="input-box">
-                            <input type="text" minlength="2" maxlength="20" placeholder="勿忘">
-                            <button type="submit">👆</button>
-                        </form>
-                        <div class="line"></div>
-                        <div class="items scrollbar"></div>`;
+    this.content = this.memo.getElementsByClassName("content")[0]
+    this.input = this.memo.querySelector(".input input")
+    this.item_list = this.memo.querySelector(".items")
+    this.current_value = ""
 
-    const itemTemplate = `<div class="item-title">
-                              <div class="title-left">{{datetime}}</div>
-                              <div class="title-right"><span class='fin' title='完成'>✅</span>
-                              <span class='del' title='删除'>❎</span></div>
-                          </div>
-                          <div class="item-body {{finish}}">{{value}}</div>`;
+    this.initAnimation()
+    this.initConst()
+    this.initStorage()
+    this.initInputEvent()
+  }
 
-    // 获取输入框
-    let form = frame.getElementsByTagName("form")[0];
-    let values = frame.getElementsByClassName("value");
+  initAnimation() {
+    /**
+     * 初始化动画
+     */
+    this.memo.addEventListener("mouseenter", () => {
+      this.content.style.display = "block"
+    }, false)
 
-    function retItem(value, time, isFinish) {
-        /**
-         * 通过内容和给定的时间创造一个item节点
-         * value : item的值， 也就是备忘录内容
-         * time : 备忘录的时间
-         * isFinish : 是否完成， 显示的样式不同
-         */
-        let template = itemTemplate;
-        if (value) {
-            template = template.replace(/{{datetime}}/, time).replace(/{{value}}/g, value);
-            template = isFinish ? template.replace("{{finish}}", "finish") : template.replace("{{finish}}", "");
+    this.memo.addEventListener("mouseleave", () => {
+      this.content.style.display = "none"
+    }, false)
 
-            // 创建外壳
-            let wrapper = document.createElement("div");
-            wrapper.innerHTML = template;
-            wrapper.classList.add("item");
-            wrapper.title = value;
+  }
 
-            return wrapper
+  initConst() {
+    /**
+     * 声明常量
+     * @type {string}
+     */
+    this.ITEM = `<div class="main"><p>{{date}}</p>
+          <p class="article">{{content}}</p></div><div class="hide-part">
+          <span class="fin-save" title="完成并保留">☀</span><span class="fin-del" title="完成并删除">❌</span></div>`
+  }
+
+  static getNowDate() {
+    let now = new Date()
+    let year = now.getFullYear()
+    let month = (now.getMonth() + 1).toString().padStart(2, "0")
+    let day = now.getDate().toString().padStart(2, "0")
+    let hour = now.getHours().toString().padStart(2, "0")
+
+    return `${year}-${month}-${day} ${hour}H`
+  }
+
+  initStorage() {
+    for (let localStorageKey in localStorage) {
+      if (localStorageKey.startsWith("memo#")) {
+        let template = this.getItem(localStorageKey.slice(5, 19), localStorage[localStorageKey])
+        this.item_list.insertAdjacentElement("afterbegin", template)
+
+        if (localStorageKey.endsWith("fin")) template.classList.add("finished")
+
+        this.initEvent(template, localStorageKey)
+      }
+    }
+  }
+
+  initInputEvent() {
+
+    // change 事件 绑定input值
+    this.input.addEventListener("change", () => {
+      this.current_value = this.input.value
+    }, false)
+
+    // 提交事件
+    this.input.addEventListener("keyup", (event) => {
+      // 13 enter 键
+      if (event.which === 13) {
+        if (this.input.value.trim() === "") return false
+
+        // 生成一个 item dom
+        let template = this.getItem(Memo.getNowDate(), this.current_value)
+        // 添加到页面上
+        this.item_list.insertAdjacentElement("afterbegin", template)
+
+        // 收尾工作
+        // 1 : 清空文本框
+        this.input.value = ""
+        // 2 ： 添加到localStorage
+        // memo#2020-05-30 18H#0.60982805
+        let storageKey = `memo#${Memo.getNowDate()}#${Math.random().toFixed(8)}`
+        localStorage.setItem(storageKey, this.current_value)
+
+        this.initEvent(template, storageKey)
+      }
+    }, false)
+
+  }
+
+  initEvent(dom, key) {
+    /**
+     * 为每个item添加事件
+     * @type {Element | any}
+     */
+    let finish_save_icon = dom.querySelector(".fin-save")
+    let finish_del_icon = dom.querySelector(".fin-del")
+    let main = dom.querySelector(".main")
+    let article = dom.getElementsByClassName("article")[0]
+
+    let value = localStorage.getItem(key)
+    let current_key = key
+
+    finish_save_icon.addEventListener("click", () => {
+      localStorage.removeItem(current_key)
+
+      if (current_key.endsWith("fin")) {
+        current_key = current_key.slice(0, -3)
+        dom.classList.remove("finished")
+      } else {
+        current_key += "fin"
+        dom.classList.add("finished")
+      }
+
+      localStorage.setItem(current_key, value)
+    }, false)
+
+    finish_del_icon.addEventListener("click", () => {
+      dom.remove()
+      localStorage.removeItem(key)
+    }, false)
+
+    article.addEventListener("dblclick", () => {
+      let old_content = article.innerText
+      article.innerHTML = ""
+      let input = document.createElement("input")
+      input.classList.add("input_temporary")
+      input.value = old_content
+      main.insertAdjacentElement("beforeend", input)
+      input.focus()
+
+      input.addEventListener("blur", () => {
+        if (input.value.trim() === "") {
+          article.innerText = old_content
         } else {
-            return null
+          article.innerText = input.value
         }
-    }
+        input.remove()
+      }, false)
 
-    function getTime() {
-        /**
-         * 返回一个可视时间
-         * @type {Date} : 2020-05-04 10
-         */
-        // 创建可读的当前时间
-        let now = new Date();
-        let year = now.getFullYear();
-        let month = (now.getMonth() + 1).toString().padStart(2, "0");
-        let day = now.getDate().toString().padStart(2, "0");
-        let hour = now.getHours().toString().padStart(2, "0");
+      input.addEventListener("keyup", (event) => {
+        if (event.which === 13) input.blur()
+      }, false)
 
-        return `${year}-${month}-${day} ${hour}H`
-    }
+    }, false)
+  }
 
-    function putItem(inputValue, time, isCookie, key) {
-        /**
-         * 绑定事件 + 把 item 放到页面上
-         * @type {Node}
-         * inputValue : item的具体内容
-         * time : item的时间
-         * isCookie : 是否是从cookie那里拿的item
-         * Key : cookie 的 key -->  "memo-2020-4-23 17H2262"
-         */
+  getItem(time, content) {
+    let item = document.createElement("div")
+    item.classList.add("item")
+    item.innerHTML = this.ITEM.replace("{{date}}", time).replace("{{content}}", content)
+    return item
+  }
 
-        const itemsBox = frame.getElementsByClassName("items")[0];
+}
 
-        let item = retItem(inputValue, time, false);
-        if (key.indexOf("finish") > 0) {
-            item = retItem(inputValue, time, true);
-        }
+new Memo()
 
-        // 将创建的元素添加到页面
-        itemsBox.appendChild(item);
-
-        // 设置cookie
-        let cookieKey = "memo-" + time + Math.floor(Math.random() * 100) + Math.floor(Math.random() * 100);
-        if (!isCookie) {
-            // not cookie
-            setCookie(cookieKey, inputValue, 7);
-        } else {
-            // cookie
-            cookieKey = key;
-        }
-
-        // 给item的删除按钮绑定事件 ❎
-        let del = item.getElementsByClassName("del")[0];
-        del.addEventListener("click", function () {
-            item.remove();
-            // 删除对应cookie
-            deleCookie(cookieKey);
-        }, false);
-
-        // 给item的对号按钮绑定事件 ✅
-        let finish = item.getElementsByClassName("fin")[0];
-        finish.addEventListener("click", function () {
-            let wrapperClassList = item.getElementsByClassName("item-body")[0].classList;
-            if (wrapperClassList.length > 1) {
-                wrapperClassList.remove("finish");
-                cookieKey = cookieKey.replace("finish", "");
-                deleCookie(cookieKey + "finish");
-                setCookie(cookieKey, inputValue, 3);
-            } else {
-                wrapperClassList.add("finish");
-                deleCookie(cookieKey);
-                setCookie(cookieKey + "finish", inputValue, 3)
-            }
-        });
-
-        // 给item的内容部分添加双击事件
-        const itemBody = item.getElementsByClassName("item-body")[0];
-        // 如果完成了 就不能改动了
-        if (itemBody.className.indexOf("finish") < 0) {
-            itemBody.addEventListener("dblclick", function () {
-                const oldValue = itemBody.innerText;
-                itemBody.innerText = "";
-
-                const input = document.createElement("input");
-                input.value = oldValue;
-                input.className = "input";
-                itemBody.appendChild(input);
-                input.focus();
-
-                input.addEventListener("blur", function () {
-                    let newValue = input.value.trim();
-                    if (newValue === "") {
-                        itemBody.innerText = oldValue;
-                    } else {
-                        itemBody.innerText = newValue;
-                        alterCookie(key, newValue, 7);
-                    }
-                    input.remove();
-                });
-                input.addEventListener("keydown", function (event) {
-                    if (event.keyCode === 13) input.blur();
-                })
-            })
-        }
-    }
-
-    function cleanCookie() {
-        const cookieObj = getCookieObg();
-        const prefix = "memo-";
-        let result = {};
-        for (let prop in cookieObj) {
-            if (cookieObj.hasOwnProperty(prop)) {
-                if (prop.slice(0, 5) === prefix)
-                    result[prop] = cookieObj[prop];
-            }
-        }
-        return result;
-    }
-
-    (function () {
-        // 查 cookie , 把cookie中的值拿出来， 如果有的话(清洗cookie数据)
-        let cleaned = cleanCookie();
-        for (let key in cleaned) {
-            // key : memo-2020-4-23 17H931
-            if (cleaned.hasOwnProperty(key)) {
-                putItem(cleaned[key], key.slice(5, 19), true, key)
-            }
-        }
-    }());
-
-    function initMemo() {
-        /**
-         * 新增一个备忘录词条
-         */
-        let input = form.getElementsByTagName("input")[0];
-        // 去除首位空格
-        let inputValue = input.value.trim();
-
-        // 如果没有输入值， 则直接退出
-        if (!inputValue) return;
-
-        putItem(inputValue, getTime(), false, "");
-        // 清空文本框
-        input.value = "";
-    }
-
-    // form提交事件
-    form.addEventListener("submit", function () {
-        initMemo();
-    }, false);
-
-
-}, false);
