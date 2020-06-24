@@ -4,42 +4,26 @@ class Memo {
     // 获取 dom 元素
     this.memo = document.getElementById("memo")
     // 初始化 memo
-    this.memo.innerHTML = `<span class="logo">勿忘</span><div class="content content_hide no-select"><div class="input">
-          <input type="text" placeholder="使用Enter嵌入" autocomplete="off"></div><div class="items scrollbar"></div></div>`
+    this.memo.innerHTML = `<div class="content no-select"><div class="input"><p>&nbsp;&nbsp;勿忘</p>
+      <input type="text" placeholder=": )" autocomplete="off"/></div><div class="items scrollbar"></div>
+      <img class="img" src="./src/img/webp.webp" alt="">
+    <footer class="footer"><div class="btn-current" id="all">全部</div><div id="done">已完成</div><div id="undone">未完成</div></footer></div>`
 
-    this.content = this.memo.getElementsByClassName("content")[0]
     this.input = this.memo.querySelector(".input input")
-    this.item_list = this.memo.querySelector(".items")
-    this.current_value = ""
+    this.itemList = this.memo.querySelector(".items")
 
-    this.initAnimation()
+    this.btnAll = this.memo.querySelector("#all")
+    this.btnDone = this.memo.querySelector("#done")
+    this.btnUndone = this.memo.querySelector("#undone")
+
+    this.img = this.memo.querySelector(".img")
+
     this.initConst()
-    this.initStorage()
+    // 清理过期且完成的备忘
+    Memo.purgeExpired()
+    this.initStorage(this.BTN_ALL)
     this.initInputEvent()
-  }
-
-  initAnimation() {
-    /**
-     * 初始化动画
-     */
-    this.memo.addEventListener("mouseenter", () => {
-      this.content.style.display = "block"
-    }, false)
-
-    this.memo.addEventListener("mouseleave", () => {
-      this.content.style.display = "none"
-    }, false)
-
-  }
-
-  initConst() {
-    /**
-     * 声明常量
-     * @type {string}
-     */
-    this.ITEM = `<div class="main"><p>{{date}}</p>
-          <p class="article">{{content}}</p></div><div class="hide-part">
-          <span class="fin-save" title="完成并保留">☀</span><span class="fin-del" title="完成并删除">❌</span></div>`
+    this.initBtnEvent()
   }
 
   static getNowDate() {
@@ -52,24 +36,87 @@ class Memo {
     return `${year}-${month}-${day} ${hour}H`
   }
 
-  initStorage() {
-    for (let localStorageKey in localStorage) {
-      if (localStorageKey.startsWith("memo#")) {
-        let template = this.getItem(localStorageKey.slice(5, 19), localStorage[localStorageKey])
-        this.item_list.insertAdjacentElement("afterbegin", template)
-
-        if (localStorageKey.endsWith("fin")) template.classList.add("finished")
-
-        this.initEvent(template, localStorageKey)
+  static getCurrentStyle(eleList, target, style) {
+    /**
+     * 为一组元素中的某一个添加指定样式， 其余去除
+     */
+    for (let ele of eleList) {
+      ele.classList.remove(style)
+      if (ele === target) {
+        ele.classList.add(style)
       }
     }
   }
 
-  initInputEvent() {
+  initConst() {
+    /**
+     * 声明常量
+     * @type {string}
+     */
 
+    // 备注条
+    this.ITEM = `<div class="check"></div><div class="main"><p class="time">{{date}}</p><p class="article">{{content}}</p></div>`
+
+    // 按钮状态
+    this.BTN_ALL = "ALL"
+    this.BTN_DONE = "DONE"
+    this.BTN_UNDONE = "UNDONE"
+
+    // 按钮列表
+    this.BTN_LIST = [this.btnAll, this.btnDone, this.btnUndone]
+
+    // 输入框当前值
+    this.CURRENT_VALUE = ""
+
+    // 按钮激活样式
+    this.CURRENT_BTN_STYLE = "btn-current"
+  }
+
+  initStorage(type) {
+    /**
+     * type 指定筛选类型。 默认 all
+     * type :  all
+     *      :  done
+     *      :  undone
+     */
+    this.itemList.innerHTML = ""
+
+    for (let localStorageKey in localStorage) {
+      // 控制是否生成备忘录对象标志
+      let isEnter = false
+      if (localStorageKey.startsWith("memo#")) {
+
+        if (type === this.BTN_ALL || type === undefined) {
+          isEnter = true
+        } else if (type === this.BTN_DONE && localStorageKey.endsWith("fin")) {
+          isEnter = true
+        } else if (type === this.BTN_UNDONE && !localStorageKey.endsWith("fin")) {
+          isEnter = true
+        }
+
+        if (isEnter) {
+          let template = this.getItem(localStorageKey.slice(5, 19), localStorage[localStorageKey])
+
+          this.itemList.insertAdjacentElement("afterbegin", template)
+          this.initEvent(template, localStorageKey)
+
+          if (localStorageKey.endsWith("fin")) {
+            template.querySelector(".main").classList.add("finished")
+            template.querySelector(".check").innerHTML = "<span>✓</span>"
+          }
+        }
+      }
+    }
+
+    this.getImg()
+  }
+
+  initInputEvent() {
+    let that = this
     // change 事件 绑定input值
     this.input.addEventListener("change", () => {
-      this.current_value = this.input.value
+      this.CURRENT_VALUE = this.input.value
+
     }, false)
 
     // 提交事件
@@ -79,9 +126,9 @@ class Memo {
         if (this.input.value.trim() === "") return false
 
         // 生成一个 item dom
-        let template = this.getItem(Memo.getNowDate(), this.current_value)
+        let template = this.getItem(Memo.getNowDate(), this.CURRENT_VALUE)
         // 添加到页面上
-        this.item_list.insertAdjacentElement("afterbegin", template)
+        this.itemList.insertAdjacentElement("afterbegin", template)
 
         // 收尾工作
         // 1 : 清空文本框
@@ -89,10 +136,11 @@ class Memo {
         // 2 ： 添加到localStorage
         // memo#2020-05-30 18H#0.60982805
         let storageKey = `memo#${Memo.getNowDate()}#${Math.random().toFixed(8)}`
-        localStorage.setItem(storageKey, this.current_value)
+        localStorage.setItem(storageKey, this.CURRENT_VALUE)
 
         this.initEvent(template, storageKey)
       }
+      that.getImg()
     }, false)
 
   }
@@ -102,38 +150,19 @@ class Memo {
      * 为每个item添加事件
      * @type {Element | any}
      */
-    let finish_save_icon = dom.querySelector(".fin-save")
-    let finish_del_icon = dom.querySelector(".fin-del")
     let main = dom.querySelector(".main")
     let article = dom.getElementsByClassName("article")[0]
-
+    let checkBox = dom.querySelector(".check")
     let value = localStorage.getItem(key)
     let current_key = key
 
-    finish_save_icon.addEventListener("click", () => {
-      localStorage.removeItem(current_key)
-
-      if (current_key.endsWith("fin")) {
-        current_key = current_key.slice(0, -3)
-        dom.classList.remove("finished")
-      } else {
-        current_key += "fin"
-        dom.classList.add("finished")
-      }
-
-      localStorage.setItem(current_key, value)
-    }, false)
-
-    finish_del_icon.addEventListener("click", () => {
-      dom.remove()
-      localStorage.removeItem(key)
-    }, false)
-
-    article.addEventListener("dblclick", () => {
+    // 修改内容的双击事件
+    function changeText() {
       let old_content = article.innerText
       article.innerHTML = ""
-      let input = document.createElement("input")
+      let input = document.createElement("textarea")
       input.classList.add("input_temporary")
+      input.classList.add("scrollbar")
       input.value = old_content
       main.insertAdjacentElement("beforeend", input)
       input.focus()
@@ -144,14 +173,62 @@ class Memo {
         } else {
           article.innerText = input.value
         }
+        localStorage.setItem(current_key, article.innerText)
         input.remove()
       }, false)
 
       input.addEventListener("keyup", (event) => {
         if (event.which === 13) input.blur()
       }, false)
+    }
 
-    }, false)
+    // 如果是已完成的就不添加双击修改事件
+    if (!current_key.endsWith("fin")) {
+      article.addEventListener("dblclick", changeText)
+    }
+
+    // 給选择框添加单机事件
+    checkBox.addEventListener("click", function () {
+
+      localStorage.removeItem(current_key)
+
+      if (current_key.endsWith("fin")) {
+        current_key = current_key.slice(0, -3)
+        this.innerHTML = ""
+        main.classList.remove("finished")
+        article.addEventListener("dblclick", changeText)
+      } else {
+        current_key += "fin"
+        this.innerHTML = "<span>✓</span>"
+        main.classList.add("finished")
+        // 移除修改事件
+        article.removeEventListener("dblclick", changeText)
+      }
+
+      localStorage.setItem(current_key, value)
+
+    }, checkBox)
+
+  }
+
+  initBtnEvent() {
+    let that = this
+    this.btnAll.addEventListener("click", function () {
+      that.initStorage(that.BTN_ALL)
+
+      Memo.getCurrentStyle(that.BTN_LIST, that.btnAll, that.CURRENT_BTN_STYLE)
+    })
+
+    this.btnDone.addEventListener("click", function () {
+      that.initStorage(that.BTN_DONE)
+      Memo.getCurrentStyle(that.BTN_LIST, that.btnDone, that.CURRENT_BTN_STYLE)
+    })
+
+    this.btnUndone.addEventListener("click", function () {
+      that.initStorage(that.BTN_UNDONE)
+      Memo.getCurrentStyle(that.BTN_LIST, that.btnUndone, that.CURRENT_BTN_STYLE)
+    })
+
   }
 
   getItem(time, content) {
@@ -161,7 +238,25 @@ class Memo {
     return item
   }
 
+  getImg() {
+    if (this.itemList.innerHTML === "") {
+      this.img.style.display = "block"
+    } else {
+      this.img.style.display = "none"
+    }
+  }
+
+  // 清除过期完成备忘录
+  static purgeExpired() {
+    for (let localStorageKey in localStorage) {
+     if (localStorageKey.startsWith("memo#") && localStorageKey.endsWith("fin")) {
+       let today = Memo.getNowDate().slice(0, 10)
+       if (today !== localStorageKey.slice(5, 15)) {
+         localStorage.removeItem(localStorageKey)
+       }
+     }
+    }
+  }
 }
 
 new Memo()
-
