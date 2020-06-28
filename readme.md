@@ -20,13 +20,7 @@
       
       // 接下来的代码依赖上面的文件， 请务必放在其下面
       <script>
-        new Memo({
-            height: 500,
-            themeColor: "#ad1457",
-            background: "#ffffff",
-            github: false,
-            imgPlaceholder: "./src/img/webp.webp"
-          })
+        new Memo()
       </script>
     ~~~
     - html
