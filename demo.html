@@ -9,6 +9,12 @@
   <link rel="stylesheet" href="src/css/memo-style.css">
 
   <style>
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
     .body, html {
       background-color: #172934;
     }
@@ -16,7 +22,7 @@
     #memo {
       position: absolute;
       top: 10px;
-      left: 50px;
+      left: 10px;
     }
 
   </style>
@@ -24,10 +30,19 @@
 </head>
 <body>
 
+
 <div id="memo"></div>
 
-</div>
-
 <script src="src/js/memo-main.js"></script>
+<script>
+  new Memo({
+    height: 500,
+    themeColor: "#ad1457",
+    background: "#ffffff",
+    github: false,
+    // imgPlaceholder: "./src/img/webp.webp"
+  })
+
+</script>
 </body>
 </html>
